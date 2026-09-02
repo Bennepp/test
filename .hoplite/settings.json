@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "ports": {"preview": 3000, "additional": {}},
+  "scripts": {
+    "setup": {
+      "enabled": true,
+      "command": "sudo apt-get update -qq && sudo apt-get install -y -qq python3-dev build-essential && python3 -m venv backend/.venv && backend/.venv/bin/pip install -q -r backend/requirements.txt && (cd frontend && pnpm install)"
+    },
+    "run": {
+      "enabled": true,
+      "command": "cd frontend && pnpm run dev -p 3000"
+    },
+    "archive": {"enabled": true, "command": null},
+    "check": {
+      "enabled": true,
+      "command": "(cd backend && ../backend/.venv/bin/python3 -c \"import app.main\") && (cd frontend && pnpm exec tsc --noEmit)"
+    }
+  },
+  "mcpServers": []
+}
