@@ -60,14 +60,25 @@ for the Bancho handshake using the username/password you just registered.
 ## 4. Moving to a VPS
 
 1. Point `DOMAIN` (and a wildcard DNS record `*.yourdomain.com`) at the VPS.
-2. Update `.env`: `DOMAIN=yourdomain.com`,
-   `NEXT_PUBLIC_API_BASE_URL=https://osu.yourdomain.com`, and rotate all
-   passwords/`JWT_SECRET`.
+2. Update `.env`: `DOMAIN=yourdomain.com` and rotate all
+   passwords/`JWT_SECRET`. Leave `NEXT_PUBLIC_API_BASE_URL` empty - the
+   website calls its own API same-origin (see `proxy/Caddyfile`), so it
+   never needs to point at a different host/scheme.
 3. `docker compose up -d --build` on the VPS. Caddy automatically obtains
    Let's Encrypt certificates for the four hostnames once DNS resolves.
 
 No application code changes are required for this migration - everything
 domain/secret-related is read from `.env`.
+
+> **Upgrading an existing local deployment:** `.env` is git-ignored and is
+> never modified by `git pull`, so if you created it before same-origin
+> API routing landed, it may still have an old
+> `NEXT_PUBLIC_API_BASE_URL=https://osu.localhost` (or similar) baked in
+> from an earlier `.env.example`. That value is read at frontend *build*
+> time and silently overrides the new default, causing "Failed to fetch"
+> on login/register even after pulling the fix. Check
+> `grep NEXT_PUBLIC_API_BASE_URL .env` and clear it to an empty value if
+> so, then `docker compose up -d --build web`.
 
 ## Repository layout
 
