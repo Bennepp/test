@@ -1,0 +1,27 @@
+# Reverse proxy for the osu! `-devserver` domain scheme.
+#
+# The osu! client, launched with `-devserver {$DOMAIN}`, talks to three
+# hostnames derived from that single domain:
+#   c.{$DOMAIN}   Bancho/IRC handshake + packet stream (POST /)
+#   osu.{$DOMAIN} score submission, beatmap/web endpoints, avatar API
+#   a.{$DOMAIN}   avatar images
+# {$DOMAIN} itself serves the Next.js frontend.
+#
+# All three (four) hostnames proxy to the same backend/frontend containers;
+# only $DOMAIN needs to change to move from localhost to a public VPS.
+
+{$DOMAIN} {
+	reverse_proxy web:3000
+}
+
+c.{$DOMAIN} {
+	reverse_proxy api:8000
+}
+
+osu.{$DOMAIN} {
+	reverse_proxy api:8000
+}
+
+a.{$DOMAIN} {
+	reverse_proxy api:8000
+}
