@@ -9,6 +9,11 @@ RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
 RUN pnpm install --frozen-lockfile || pnpm install
 
 COPY . .
+# NEXT_PUBLIC_* variables are inlined into the client bundle at build time,
+# not read at container runtime - so this must be a build ARG, not just an
+# environment variable on the `web` service in docker-compose.yml.
+ARG NEXT_PUBLIC_API_BASE_URL
+ENV NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL}
 RUN pnpm run build
 
 FROM node:22-slim AS run
