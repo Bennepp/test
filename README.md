@@ -21,7 +21,7 @@ Compose and is designed to move to a VPS by changing one file (`.env`).
 cp .env.example .env
 # edit .env: at minimum change the *_PASSWORD and JWT_SECRET values
 
-docker compose up -d --build
+docker compose up -d --build --force-recreate
 ```
 
 This starts everything under `localhost`:
@@ -70,15 +70,33 @@ for the Bancho handshake using the username/password you just registered.
 No application code changes are required for this migration - everything
 domain/secret-related is read from `.env`.
 
-> **Upgrading an existing local deployment:** `.env` is git-ignored and is
-> never modified by `git pull`, so if you created it before same-origin
-> API routing landed, it may still have an old
-> `NEXT_PUBLIC_API_BASE_URL=https://osu.localhost` (or similar) baked in
-> from an earlier `.env.example`. That value is read at frontend *build*
-> time and silently overrides the new default, causing "Failed to fetch"
-> on login/register even after pulling the fix. Check
-> `grep NEXT_PUBLIC_API_BASE_URL .env` and clear it to an empty value if
-> so, then `docker compose up -d --build web`.
+## 5. Updating after `git pull`
+
+Always use this exact command after pulling changes, not a plain
+`docker compose up -d --build`:
+
+```sh
+docker compose up -d --build --force-recreate
+```
+
+Why `--force-recreate` is required: `proxy/Caddyfile` is bind-mounted
+into the `proxy` container (see `docker-compose.yml`). Docker Compose
+only recreates a container when *its own declared config* (image, env,
+ports, volume list) changes - a bind-mounted file's *contents* changing
+on disk does not count, and `proxy` has no `build:` step for `--build`
+to act on either. Without `--force-recreate`, `proxy` keeps running with
+whatever Caddy config it loaded at its last start, silently ignoring any
+Caddyfile changes from the pull - which looks identical to a broken
+backend (e.g. `/api/*` requests 404 against the frontend instead of
+reaching the API) even though the API itself is fine.
+
+> **If `.env` predates a version of this repo without same-origin API
+> routing**, it may still have an old
+> `NEXT_PUBLIC_API_BASE_URL=https://osu.localhost` (or similar) baked in -
+> `.env` is git-ignored, so `git pull` never updates it. That value is
+> read at frontend *build* time and overrides the current empty default.
+> Check `grep NEXT_PUBLIC_API_BASE_URL .env` and clear it to an empty
+> value if so, before rebuilding.
 
 ## Repository layout
 
