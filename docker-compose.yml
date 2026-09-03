@@ -58,6 +58,11 @@ services:
     depends_on:
       - api
 
+  # Caddyfile is bind-mounted, so `docker compose up --build` alone will
+  # NOT pick up changes to it after a `git pull` - Compose only recreates
+  # a container when its own declared config changes, not when a mounted
+  # file's contents change on disk. Always update with
+  # `docker compose up -d --build --force-recreate` (see README.md).
   proxy:
     image: caddy:2-alpine
     restart: unless-stopped
