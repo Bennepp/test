@@ -9,19 +9,30 @@
 #
 # All three (four) hostnames proxy to the same backend/frontend containers;
 # only $DOMAIN needs to change to move from localhost to a public VPS.
+#
+# `auto_https off` is required here: Caddy's automatic-HTTPS logic doesn't
+# treat `c.localhost` / `osu.localhost` / `a.localhost` as fully "local"
+# hostnames the way it treats bare `localhost`, so it can attempt to
+# redirect/negotiate HTTPS for them and the -devserver client (which speaks
+# plain HTTP) sees the connection hang or close. When DOMAIN is switched to
+# a real public domain for a VPS deploy, remove this line (and the
+# `http://` prefixes below) to restore normal Let's Encrypt automatic HTTPS.
+{
+	auto_https off
+}
 
-{$DOMAIN} {
+http://{$DOMAIN} {
 	reverse_proxy web:3000
 }
 
-c.{$DOMAIN} {
+http://c.{$DOMAIN} {
 	reverse_proxy api:8000
 }
 
-osu.{$DOMAIN} {
+http://osu.{$DOMAIN} {
 	reverse_proxy api:8000
 }
 
-a.{$DOMAIN} {
+http://a.{$DOMAIN} {
 	reverse_proxy api:8000
 }
