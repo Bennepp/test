@@ -20,8 +20,8 @@ class RegisterRequest(BaseModel):
     @field_validator("password")
     @classmethod
     def validate_password(cls, value: str) -> str:
-        if len(value) < 8:
-            raise ValueError("password must be at least 8 characters")
+        if not (8 <= len(value) <= 32):
+            raise ValueError("password must be 8-32 characters")
         return value
 
 
@@ -43,7 +43,14 @@ class LeaderboardEntry(BaseModel):
     pp: float
     accuracy: float
     play_count: int
+    total_score: int
     avatar_url: str
+
+
+class UserSearchResult(BaseModel):
+    user_id: int
+    username: str
+    country: str
 
 
 class ProfileResponse(BaseModel):
