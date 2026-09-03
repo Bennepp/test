@@ -19,7 +19,9 @@ app.add_middleware(
 app.include_router(bancho.router)
 # `osu.<domain>` - score submission, beatmap web endpoints.
 app.include_router(score_submission.router)
-# `a.<domain>` + `osu.<domain>/api` - avatar storage.
+# `a.<domain>` - bare avatar images for the osu! client.
+app.include_router(avatars.client_router)
+# `<domain>/api/avatar` - avatar upload/serving for the website.
 app.include_router(avatars.router)
 # JSON API for the web frontend.
 app.include_router(web_api.router)

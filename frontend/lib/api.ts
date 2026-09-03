@@ -1,8 +1,24 @@
-// Single source of truth for the backend base URL, sourced from env so the
-// frontend never hardcodes localhost/a domain.
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+// The website calls its own API through the same origin the page was
+// loaded from when running in the browser (Caddy proxies /api/* on
+// http://{$DOMAIN} to the backend - see proxy/Caddyfile). That's
+// same-origin by default, so no env var, CORS setup, or extra DNS entry is
+// needed for the website; only the osu! game client needs the c./osu./a.
+// subdomains, since those are hardcoded by the Bancho protocol itself.
+//
+// Server Components run inside the `web` container's Node.js process, not
+// the browser, so a relative fetch() there can't resolve against "the
+// current page" the way browser fetch does - it needs an absolute URL. On
+// the server we talk directly to the `api` container over the Docker
+// network instead, bypassing Caddy entirely.
+const BROWSER_API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
+const SERVER_API_BASE_URL = process.env.INTERNAL_API_BASE_URL ?? "http://api:8000";
+
+function apiBaseUrl(): string {
+  return typeof window === "undefined" ? SERVER_API_BASE_URL : BROWSER_API_BASE_URL;
+}
 
 export type GameMode = 0 | 1 | 2 | 3; // osu! | taiko | catch | mania
+export type LeaderboardSort = "performance" | "score";
 
 export interface LeaderboardEntry {
   rank: number;
@@ -12,6 +28,7 @@ export interface LeaderboardEntry {
   pp: number;
   accuracy: number;
   play_count: number;
+  total_score: number;
   avatar_url: string;
 }
 
@@ -34,8 +51,14 @@ export interface ProfileResponse {
   stats: ModeStats[];
 }
 
+export interface UserSearchResult {
+  user_id: number;
+  username: string;
+  country: string;
+}
+
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE_URL}${path}`, {
+  const res = await fetch(`${apiBaseUrl()}${path}`, {
     ...init,
     headers: { "Content-Type": "application/json", ...init?.headers },
     cache: "no-store",
@@ -47,8 +70,12 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-export function fetchLeaderboard(mode: GameMode, relax: boolean): Promise<LeaderboardEntry[]> {
-  return apiFetch(`/api/leaderboard?mode=${mode}&relax=${relax}`);
+export function fetchLeaderboard(
+  mode: GameMode,
+  relax: boolean,
+  sort: LeaderboardSort = "performance",
+): Promise<LeaderboardEntry[]> {
+  return apiFetch(`/api/leaderboard?mode=${mode}&relax=${relax}&sort=${sort}`);
 }
 
 export function login(username: string, password: string): Promise<{ access_token: string }> {
@@ -68,4 +95,8 @@ export function register(
 
 export function fetchProfile(userId: number): Promise<ProfileResponse> {
   return apiFetch(`/api/profile/${userId}`);
+}
+
+export function searchUsers(query: string): Promise<UserSearchResult[]> {
+  return apiFetch(`/api/users/search?q=${encodeURIComponent(query)}`);
 }

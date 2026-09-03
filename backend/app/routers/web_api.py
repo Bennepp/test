@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import create_access_token, current_user_id
@@ -15,12 +15,11 @@ from app.schemas import (
     ProfileResponse,
     RegisterRequest,
     TokenResponse,
+    UserSearchResult,
 )
 from app.security import hash_plaintext_password, verify_plaintext_password
-from app.config import get_settings
 
 router = APIRouter(prefix="/api", tags=["web"])
-settings = get_settings()
 
 
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
@@ -56,15 +55,17 @@ async def login(body: LoginRequest, session: AsyncSession = Depends(get_session)
 async def leaderboard(
     mode: int = 0,
     relax: bool = False,
+    sort: str = "performance",
     limit: int = 50,
     session: AsyncSession = Depends(get_session),
 ) -> list[LeaderboardEntry]:
     limit = max(1, min(limit, 100))
+    order_column = Stats.total_score if sort == "score" else Stats.pp
     rows = await session.execute(
         select(Stats, User)
         .join(User, User.id == Stats.user_id)
         .where(Stats.mode == mode, Stats.relax == relax)
-        .order_by(Stats.pp.desc())
+        .order_by(order_column.desc())
         .limit(limit)
     )
     return [
@@ -76,9 +77,25 @@ async def leaderboard(
             pp=stats.pp,
             accuracy=stats.accuracy,
             play_count=stats.play_count,
-            avatar_url=f"https://a.{settings.domain}/{user.id}",
+            total_score=stats.total_score,
+            # Same-origin path the website's <img> tags resolve directly;
+            # the osu! client instead hits a.<domain>/{id} (see avatars.py).
+            avatar_url=f"/api/avatar/{user.id}",
         )
         for i, (stats, user) in enumerate(rows.all())
+    ]
+
+
+@router.get("/users/search", response_model=list[UserSearchResult])
+async def search_users(q: str, session: AsyncSession = Depends(get_session)) -> list[UserSearchResult]:
+    q = q.strip()
+    if not q:
+        return []
+    rows = await session.scalars(
+        select(User).where(or_(User.username.ilike(f"%{q}%"))).limit(10)
+    )
+    return [
+        UserSearchResult(user_id=u.id, username=u.username, country=u.country) for u in rows
     ]
 
 

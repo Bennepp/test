@@ -5,3 +5,5 @@ frontend/node_modules
 frontend/.next
 .env
 frontend/tsconfig.tsbuildinfo
+.hoplite/attachments/
+.hoplite/archive/

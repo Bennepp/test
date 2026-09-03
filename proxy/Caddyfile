@@ -21,8 +21,19 @@
 	auto_https off
 }
 
+# The website itself calls its own API through this same origin
+# (http://{$DOMAIN}/api/...) rather than the osu.{$DOMAIN} subdomain the
+# game client uses. That keeps the browser's requests same-origin, so the
+# website never depends on osu.{$DOMAIN} DNS resolving, on http/https
+# scheme matching, or on CORS - only the real osu! client (which hardcodes
+# c./osu./a. subdomains in its own protocol) needs those below.
 http://{$DOMAIN} {
-	reverse_proxy web:3000
+	handle /api/* {
+		reverse_proxy api:8000
+	}
+	handle {
+		reverse_proxy web:3000
+	}
 }
 
 http://c.{$DOMAIN} {
